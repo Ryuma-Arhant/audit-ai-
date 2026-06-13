@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs/promises'
-import Anthropic from '@anthropic-ai/sdk'
-import { callClaude } from '../../lib/claude'
+import { callClaude, MODEL_CAPABLE } from '../../lib/claude'
+import type { MessageParam, ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
 import type { InferredIntent } from './types'
@@ -46,17 +46,17 @@ Valid purposes: submit-form, navigate, open-modal, toggle-visibility, save-chang
 
 Return ONLY the JSON array.`
 
-      const messages: Anthropic.MessageParam[] = screenshotBase64
+      const messages: MessageParam[] = screenshotBase64
         ? [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } } as Anthropic.ContentBlockParam,
-            { type: 'text', text: userText } as Anthropic.ContentBlockParam,
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } } as ContentBlock,
+            { type: 'text', text: userText } as ContentBlock,
           ] }]
         : [{ role: 'user', content: userText }]
 
       const response = await callClaude({
         auditId,
         agentName: 'ui-inferrer',
-        model: 'claude-sonnet-4-6',
+        model: MODEL_CAPABLE,
         messages,
         system: 'You are a UI analyst. Return only valid JSON.',
         maxTokens: 1024,

@@ -1,51 +1,110 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { ChatOpenAI } from '@langchain/openai'
+import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
 import { db } from './db'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// ─── Local message types ───
 
-const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: number }> = {
-  'claude-sonnet-4-6':         { inputPerMTok: 3.0,  outputPerMTok: 15.0 },
-  'claude-haiku-4-5-20251001': { inputPerMTok: 0.80, outputPerMTok: 4.0  },
+export interface TextBlock {
+  type: 'text'
+  text: string
 }
+
+export interface ImageBlock {
+  type: 'image'
+  source: { type: 'base64'; media_type: string; data: string }
+}
+
+export type ContentBlock = TextBlock | ImageBlock
+
+export interface MessageParam {
+  role: 'user' | 'assistant'
+  content: string | ContentBlock[]
+}
+
+export interface LLMResponse {
+  content: Array<{ type: 'text'; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}
+
+// ─── Model constants ───
+
+export const MODEL_CAPABLE = 'nvidia/nemotron-3-ultra-550b-a55b'
+export const MODEL_FAST    = 'nvidia/nemotron-3-ultra-550b-a55b'
+
+const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1'
+
+// Pricing estimate for nemotron-3-ultra-550b: $8/MTok in+out
+const PRICE: { input: number; output: number } = { input: 8.0, output: 8.0 }
+
+// ─── callClaude ───
 
 export interface CallClaudeParams {
   auditId: string
   agentName: string
   model: string
-  messages: Anthropic.MessageParam[]
+  messages: MessageParam[]
   system?: string
   maxTokens?: number
 }
 
-export async function callClaude(params: CallClaudeParams): Promise<Anthropic.Message> {
+export async function callClaude(params: CallClaudeParams): Promise<LLMResponse> {
   const { auditId, agentName, model, messages, system, maxTokens = 1024 } = params
 
   await enforceCostCap(auditId)
 
-  const response = await client.messages.create({
+  const llm = new ChatOpenAI({
     model,
-    max_tokens: maxTokens,
-    ...(system ? { system } : {}),
-    messages,
+    openAIApiKey: process.env.NVIDIA_API_KEY ?? '',
+    configuration: { baseURL: NVIDIA_BASE_URL },
+    maxTokens,
+    temperature: 0.2,
   })
 
-  const pricing = MODEL_PRICING[model] ?? { inputPerMTok: 3.0, outputPerMTok: 15.0 }
+  const lcMessages = []
+  if (system) lcMessages.push(new SystemMessage(system))
+
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      if (typeof msg.content === 'string') {
+        lcMessages.push(new HumanMessage(msg.content))
+      } else {
+        const parts = msg.content.map(block => {
+          if (block.type === 'image') {
+            return {
+              type: 'image_url' as const,
+              image_url: { url: `data:${block.source.media_type};base64,${block.source.data}` },
+            }
+          }
+          return { type: 'text' as const, text: block.text }
+        })
+        lcMessages.push(new HumanMessage({ content: parts }))
+      }
+    } else {
+      lcMessages.push(new AIMessage(typeof msg.content === 'string' ? msg.content : ''))
+    }
+  }
+
+  const response = await llm.invoke(lcMessages)
+
+  const text = typeof response.content === 'string'
+    ? response.content
+    : (response.content as Array<{ type: string; text?: string }>)
+        .find(b => b.type === 'text')?.text ?? ''
+
+  const inputTokens  = response.usage_metadata?.input_tokens  ?? 0
+  const outputTokens = response.usage_metadata?.output_tokens ?? 0
   const costUsd =
-    (response.usage.input_tokens  / 1_000_000) * pricing.inputPerMTok +
-    (response.usage.output_tokens / 1_000_000) * pricing.outputPerMTok
+    (inputTokens  / 1_000_000) * PRICE.input +
+    (outputTokens / 1_000_000) * PRICE.output
 
   await db.tokenLog.create({
-    data: {
-      auditId,
-      agentName,
-      model,
-      inputTokens:  response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      costUsd,
-    },
+    data: { auditId, agentName, model, inputTokens, outputTokens, costUsd },
   })
 
-  return response
+  return {
+    content: [{ type: 'text', text }],
+    usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+  }
 }
 
 async function enforceCostCap(auditId: string): Promise<void> {

@@ -1,20 +1,12 @@
-import { callClaude, CostCapError } from '@/lib/claude'
+import { callClaude, CostCapError, MODEL_FAST } from '@/lib/claude'
 import { db } from '@/lib/db'
 
-jest.mock('@anthropic-ai/sdk', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    messages: {
-      create: jest.fn().mockResolvedValue({
-        id: 'msg_test',
-        type: 'message',
-        role: 'assistant',
-        model: 'claude-haiku-4-5-20251001',
-        stop_reason: 'end_turn',
-        content: [{ type: 'text', text: 'response' }],
-        usage: { input_tokens: 100, output_tokens: 50 },
-      }),
-    },
+jest.mock('@langchain/openai', () => ({
+  ChatOpenAI: jest.fn().mockImplementation(() => ({
+    invoke: jest.fn().mockResolvedValue({
+      content: 'response',
+      usage_metadata: { input_tokens: 100, output_tokens: 50 },
+    }),
   })),
 }))
 
@@ -46,7 +38,7 @@ test('callClaude returns the message response', async () => {
   const result = await callClaude({
     auditId,
     agentName: 'test-agent',
-    model: 'claude-haiku-4-5-20251001',
+    model: MODEL_FAST,
     messages: [{ role: 'user', content: 'hello' }],
   })
   expect(result.content[0]).toMatchObject({ type: 'text', text: 'response' })
@@ -56,7 +48,7 @@ test('callClaude writes a TokenLog row with correct cost', async () => {
   await callClaude({
     auditId,
     agentName: 'test-agent',
-    model: 'claude-haiku-4-5-20251001',
+    model: MODEL_FAST,
     messages: [{ role: 'user', content: 'hello' }],
   })
   const logs = await db.tokenLog.findMany({ where: { auditId } })
@@ -64,8 +56,8 @@ test('callClaude writes a TokenLog row with correct cost', async () => {
   expect(logs[0].inputTokens).toBe(100)
   expect(logs[0].outputTokens).toBe(50)
   expect(logs[0].agentName).toBe('test-agent')
-  // haiku: (100/1_000_000 * 0.80) + (50/1_000_000 * 4.0) = 0.00028
-  expect(logs[0].costUsd).toBeCloseTo(0.00028, 5)
+  // nemotron-550b: (100/1M * 8.0) + (50/1M * 8.0) = 0.0008 + 0.0004 = 0.0012
+  expect(logs[0].costUsd).toBeCloseTo(0.0012, 5)
 })
 
 test('callClaude throws CostCapError when accumulated cost exceeds limit', async () => {
@@ -77,7 +69,7 @@ test('callClaude throws CostCapError when accumulated cost exceeds limit', async
     data: {
       auditId,
       agentName: 'prev',
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_FAST,
       inputTokens: 1000,
       outputTokens: 500,
       costUsd: 0.001, // already over limit
@@ -87,7 +79,7 @@ test('callClaude throws CostCapError when accumulated cost exceeds limit', async
     callClaude({
       auditId,
       agentName: 'test-agent',
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_FAST,
       messages: [{ role: 'user', content: 'hello' }],
     })
   ).rejects.toThrow(CostCapError)

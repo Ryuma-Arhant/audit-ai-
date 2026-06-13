@@ -13,7 +13,8 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run worker\""
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
+    "@langchain/core": "^1.1.49",
+    "@langchain/openai": "^1.4.7",
     "@prisma/client": "^5.22.0",
     "next": "16.2.9",
     "playwright": "^1.60.0",

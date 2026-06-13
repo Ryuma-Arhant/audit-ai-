@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs/promises'
-import Anthropic from '@anthropic-ai/sdk'
-import { callClaude } from '../../lib/claude'
+import { callClaude, MODEL_CAPABLE } from '../../lib/claude'
+import type { ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
 import type { InferredIntent } from './types'
@@ -11,7 +11,7 @@ export async function aiJudge(auditId: string, intents: InferredIntent[]): Promi
     const pages = await db.page.findMany({ where: { auditId } })
     if (pages.length === 0) return null
 
-    const imageBlocks: Anthropic.ContentBlockParam[] = []
+    const imageBlocks: ContentBlock[] = []
     for (const pageRecord of pages.slice(0, 3)) {
       if (!pageRecord.screenshotPath) continue
       try {
@@ -41,12 +41,12 @@ UX score: 90-100 excellent, 70-89 good, 50-69 fair, 30-49 poor, 0-29 broken
 Types: ux_incoherence, auth_dead_end, hallucinated_route
 Return ONLY the JSON object.`
 
-    const content: Anthropic.ContentBlockParam[] = [...imageBlocks, { type: 'text', text: textBlock }]
+    const content: ContentBlock[] = [...imageBlocks, { type: 'text', text: textBlock }]
 
     const response = await callClaude({
       auditId,
       agentName: 'ai-judge',
-      model: 'claude-sonnet-4-6',
+      model: MODEL_CAPABLE,
       messages: [{ role: 'user', content }],
       system: 'You are a UX quality judge. Return only valid JSON.',
       maxTokens: 1024,

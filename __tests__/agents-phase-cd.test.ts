@@ -1,9 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { rootCauseAnalyzer } from '../worker/agents/root-cause-analyzer'
 import { aiJudge } from '../worker/agents/ai-judge'
 import { reportSynthesizer } from '../worker/agents/report-synthesizer'
 import { db } from '../lib/db'
 import type { InferredIntent } from '../worker/agents/types'
+import type { LLMResponse } from '../lib/claude'
 
 jest.mock('../lib/claude', () => ({
   callClaude: jest.fn(),
@@ -13,10 +13,10 @@ jest.mock('../lib/claude', () => ({
 }))
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Anthropic.Message>> }
+const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<LLMResponse>> }
 
-function claudeResp(text: string): Anthropic.Message {
-  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as Anthropic.Message
+function claudeResp(text: string): LLMResponse {
+  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as LLMResponse
 }
 
 async function clearDb() {

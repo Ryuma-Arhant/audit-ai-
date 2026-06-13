@@ -1,4 +1,4 @@
-import { callClaude } from '../../lib/claude'
+import { callClaude, MODEL_FAST } from '../../lib/claude'
 import { trackAgentRun } from './run-tracker'
 import type { InferredIntent, AgentFlowSpec } from './types'
 
@@ -9,7 +9,7 @@ export async function testGenerator(auditId: string, intents: InferredIntent[]):
     const response = await callClaude({
       auditId,
       agentName: 'test-generator',
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_FAST,
       messages: [{
         role: 'user',
         content: `Generate realistic Playwright test flows for these UI intents.

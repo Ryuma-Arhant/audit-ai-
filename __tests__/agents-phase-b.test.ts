@@ -1,10 +1,10 @@
 import http from 'http'
 import { AddressInfo } from 'net'
-import Anthropic from '@anthropic-ai/sdk'
 import { testGenerator } from '../worker/agents/test-generator'
 import { agenticExplorer } from '../worker/agents/agentic-explorer'
 import { db } from '../lib/db'
 import type { InferredIntent, AgentFlowSpec } from '../worker/agents/types'
+import type { LLMResponse } from '../lib/claude'
 
 jest.setTimeout(60000)
 
@@ -16,10 +16,10 @@ jest.mock('../lib/claude', () => ({
 }))
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Anthropic.Message>> }
+const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<LLMResponse>> }
 
-function claudeResp(text: string): Anthropic.Message {
-  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as Anthropic.Message
+function claudeResp(text: string): LLMResponse {
+  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as LLMResponse
 }
 
 async function clearDb() {

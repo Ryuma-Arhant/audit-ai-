@@ -1,4 +1,4 @@
-import { callClaude } from '../../lib/claude'
+import { callClaude, MODEL_CAPABLE } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
 
@@ -13,7 +13,7 @@ export async function rootCauseAnalyzer(auditId: string): Promise<void> {
     const response = await callClaude({
       auditId,
       agentName: 'root-cause-analyzer',
-      model: 'claude-sonnet-4-6',
+      model: MODEL_CAPABLE,
       messages: [{
         role: 'user',
         content: `Provide detailed reproduction steps and root cause descriptions for these findings.

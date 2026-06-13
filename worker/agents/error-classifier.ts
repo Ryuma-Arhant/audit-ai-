@@ -1,4 +1,4 @@
-import { callClaude } from '../../lib/claude'
+import { callClaude, MODEL_FAST } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
 
@@ -13,7 +13,7 @@ export async function errorClassifier(auditId: string): Promise<void> {
     const response = await callClaude({
       auditId,
       agentName: 'error-classifier',
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_FAST,
       messages: [{
         role: 'user',
         content: `Review these deterministic findings. Identify any that are false positives or incorrectly classified.
