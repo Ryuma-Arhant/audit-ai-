@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "worker": "tsx watch worker/index.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run worker\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
