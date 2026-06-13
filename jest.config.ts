@@ -10,6 +10,8 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['**/__tests__/**/*.test.ts'],
+  // SQLite can't handle concurrent writers — run test files sequentially
+  maxWorkers: 1,
 }
 
 export default createJestConfig(config)
