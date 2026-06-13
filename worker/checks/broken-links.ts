@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { db } from '../../lib/db'
 
 interface LinkEntry { href: string; text: string }
@@ -11,7 +12,7 @@ export async function checkBrokenLinks(auditId: string): Promise<void> {
     statusMap.set(page.urlRaw, page.httpStatus)
   }
 
-  const findings: Parameters<typeof db.finding.createMany>[0]['data'] = []
+  const findings: Prisma.FindingCreateManyInput[] = []
   for (const page of pages) {
     const links: LinkEntry[] = JSON.parse(page.links)
     for (const link of links) {

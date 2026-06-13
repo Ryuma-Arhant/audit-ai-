@@ -1,4 +1,4 @@
-import type { Message } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { uiInferrer } from '../worker/agents/ui-inferrer'
 import { errorClassifier } from '../worker/agents/error-classifier'
 import { db } from '../lib/db'
@@ -11,13 +11,13 @@ jest.mock('../lib/claude', () => ({
 }))
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Message>> }
+const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Anthropic.Message>> }
 
-function claudeResp(text: string): Message {
+function claudeResp(text: string): Anthropic.Message {
   return {
     content: [{ type: 'text', text }],
     usage: { input_tokens: 100, output_tokens: 50 },
-  } as unknown as Message
+  } as unknown as Anthropic.Message
 }
 
 async function clearDb() {

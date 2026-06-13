@@ -1,6 +1,6 @@
 import http from 'http'
 import { AddressInfo } from 'net'
-import type { Message } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { testGenerator } from '../worker/agents/test-generator'
 import { agenticExplorer } from '../worker/agents/agentic-explorer'
 import { db } from '../lib/db'
@@ -16,10 +16,10 @@ jest.mock('../lib/claude', () => ({
 }))
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Message>> }
+const { callClaude } = require('../lib/claude') as { callClaude: jest.MockedFunction<() => Promise<Anthropic.Message>> }
 
-function claudeResp(text: string): Message {
-  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as Message
+function claudeResp(text: string): Anthropic.Message {
+  return { content: [{ type: 'text', text }], usage: { input_tokens: 50, output_tokens: 30 } } as unknown as Anthropic.Message
 }
 
 async function clearDb() {

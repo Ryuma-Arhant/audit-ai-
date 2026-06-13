@@ -1,6 +1,6 @@
 import path from 'path'
 import fs from 'fs/promises'
-import type { ContentBlockParam } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { callClaude } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
@@ -11,7 +11,7 @@ export async function aiJudge(auditId: string, intents: InferredIntent[]): Promi
     const pages = await db.page.findMany({ where: { auditId } })
     if (pages.length === 0) return null
 
-    const imageBlocks: ContentBlockParam[] = []
+    const imageBlocks: Anthropic.ContentBlockParam[] = []
     for (const pageRecord of pages.slice(0, 3)) {
       if (!pageRecord.screenshotPath) continue
       try {
@@ -41,7 +41,7 @@ UX score: 90-100 excellent, 70-89 good, 50-69 fair, 30-49 poor, 0-29 broken
 Types: ux_incoherence, auth_dead_end, hallucinated_route
 Return ONLY the JSON object.`
 
-    const content: ContentBlockParam[] = [...imageBlocks, { type: 'text', text: textBlock }]
+    const content: Anthropic.ContentBlockParam[] = [...imageBlocks, { type: 'text', text: textBlock }]
 
     const response = await callClaude({
       auditId,

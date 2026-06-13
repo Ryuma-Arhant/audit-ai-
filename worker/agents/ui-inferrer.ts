@@ -1,6 +1,6 @@
 import path from 'path'
 import fs from 'fs/promises'
-import type { ContentBlockParam, MessageParam } from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { callClaude } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
@@ -46,10 +46,10 @@ Valid purposes: submit-form, navigate, open-modal, toggle-visibility, save-chang
 
 Return ONLY the JSON array.`
 
-      const messages: MessageParam[] = screenshotBase64
+      const messages: Anthropic.MessageParam[] = screenshotBase64
         ? [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } } as ContentBlockParam,
-            { type: 'text', text: userText } as ContentBlockParam,
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: screenshotBase64 } } as Anthropic.ContentBlockParam,
+            { type: 'text', text: userText } as Anthropic.ContentBlockParam,
           ] }]
         : [{ role: 'user', content: userText }]
 

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { db } from '../../lib/db'
 
 interface ConsoleEntry { level: string; message: string; source: string }
@@ -5,7 +6,7 @@ interface ConsoleEntry { level: string; message: string; source: string }
 export async function checkConsoleErrors(auditId: string): Promise<void> {
   const pages = await db.page.findMany({ where: { auditId } })
 
-  const findings: Parameters<typeof db.finding.createMany>[0]['data'] = []
+  const findings: Prisma.FindingCreateManyInput[] = []
   for (const page of pages) {
     const errors: ConsoleEntry[] = JSON.parse(page.consoleErrors)
     for (const err of errors) {
