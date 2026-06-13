@@ -67,7 +67,7 @@ describe('GET /api/audits/[id]', () => {
       },
     })
     const req = new Request(`http://localhost/api/audits/${audit.id}`)
-    const res = await GET(req, { params: { id: audit.id } })
+    const res = await GET(req, { params: Promise.resolve({ id: audit.id }) })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.trustScore).toBe(87)
@@ -78,7 +78,7 @@ describe('GET /api/audits/[id]', () => {
 
   test('returns 404 for unknown audit id', async () => {
     const req = new Request('http://localhost/api/audits/nonexistent')
-    const res = await GET(req, { params: { id: 'nonexistent' } })
+    const res = await GET(req, { params: Promise.resolve({ id: 'nonexistent' }) })
     expect(res.status).toBe(404)
   })
 })
