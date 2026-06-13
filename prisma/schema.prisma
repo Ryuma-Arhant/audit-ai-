@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Audit {
+  id               String     @id @default(cuid())
+  url              String
+  status           String     @default("queued")
+  config           String?    // stored as JSON string
+
+  trustScore       Int?
+  reliabilityScore Int?
+  uxScore          Int?
+  scoreBreakdown   String?    // stored as JSON string
+
+  pagesCrawled     Int        @default(0)
+  durationMs       Int?
+  costUsd          Float?
+  errorMessage     String?
+
+  createdAt        DateTime   @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  pages            Page[]
+  findings         Finding[]
+  agentRuns        AgentRun[]
+  tokenLogs        TokenLog[]
+}
+
+model Page {
+  id             String    @id @default(cuid())
+  auditId        String
+  audit          Audit     @relation(fields: [auditId], references: [id])
+  url            String
+  urlRaw         String
+  title          String?
+  httpStatus     Int
+  loadTimeMs     Int?
+  screenshotPath String?
+  harPath        String?
+  consoleErrors  String    // stored as JSON string: { level, message, source }[]
+  networkErrors  String    // stored as JSON string: { url, status, method }[]
+  links          String    // stored as JSON string: { href, text, status }[]
+  actions        String    // stored as JSON string: detected interactive elements
+  contentHash    String?
+  discoveredAt   DateTime  @default(now())
+  findings       Finding[]
+
+  @@index([auditId])
+}
+
+model Finding {
+  id              String   @id @default(cuid())
+  auditId         String
+  audit           Audit    @relation(fields: [auditId], references: [id])
+  pageId          String?
+  page            Page?    @relation(fields: [pageId], references: [id])
+  source          String
+  type            String
+  severity        String
+  confidence      Float
+  unverified      Boolean  @default(false)
+  pageUrl         String
+  description     String
+  reproduction    String?
+  screenshotPath  String?
+  domEvidence     String?
+  consoleEvidence String?  // stored as JSON string: { level, message, source }[]
+  networkEvidence String?  // stored as JSON string: { url, status, method }[]
+  createdAt       DateTime @default(now())
+
+  @@index([auditId])
+  @@index([severity])
+  @@index([unverified])
+}
+
+model AgentRun {
+  id           String    @id @default(cuid())
+  auditId      String
+  audit        Audit     @relation(fields: [auditId], references: [id])
+  agentName    String
+  phase        Int
+  status       String
+  inputJson    String?   // stored as JSON string
+  outputJson   String?   // stored as JSON string
+  durationMs   Int?
+  errorMessage String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([auditId])
+}
+
+model TokenLog {
+  id           String   @id @default(cuid())
+  auditId      String
+  audit        Audit    @relation(fields: [auditId], references: [id])
+  agentName    String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float
+  createdAt    DateTime @default(now())
+
+  @@index([auditId])
+}
