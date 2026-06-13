@@ -4,7 +4,9 @@ import { useParams } from 'next/navigation'
 import { ScoreRing } from '@/components/ScoreRing'
 import { FindingCard, UnverifiedCard } from '@/components/FindingCard'
 import { PipelineStatus } from '@/components/PipelineStatus'
+import { PageGrid } from '@/components/PageGrid'
 import type { FindingData } from '@/components/FindingCard'
+import type { PageData } from '@/components/PageGrid'
 
 type AgentRun = {
   id: string
@@ -29,6 +31,7 @@ type Audit = {
   durationMs: number | null
   findings: FindingData[]
   agentRuns: AgentRun[]
+  pages: PageData[]
 }
 
 type Filter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'unverified'
@@ -198,6 +201,8 @@ export default function ReportPage() {
           No issues found.
         </div>
       )}
+
+      <PageGrid pages={audit.pages ?? []} />
     </main>
   )
 }

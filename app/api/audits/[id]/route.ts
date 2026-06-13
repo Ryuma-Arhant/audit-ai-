@@ -19,6 +19,19 @@ export async function GET(
     include: {
       findings:  { orderBy: { createdAt: 'asc' } },
       agentRuns: { orderBy: { startedAt: 'asc' } },
+      pages: {
+        orderBy: { discoveredAt: 'asc' },
+        select: {
+          id:             true,
+          url:            true,
+          title:          true,
+          httpStatus:     true,
+          loadTimeMs:     true,
+          screenshotPath: true,
+          actions:        true,
+          findings: { select: { id: true, severity: true, unverified: true } },
+        },
+      },
     },
   })
 
