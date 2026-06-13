@@ -3,7 +3,19 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { ScoreRing } from '@/components/ScoreRing'
 import { FindingCard, UnverifiedCard } from '@/components/FindingCard'
+import { PipelineStatus } from '@/components/PipelineStatus'
 import type { FindingData } from '@/components/FindingCard'
+
+type AgentRun = {
+  id: string
+  agentName: string
+  phase: number
+  status: string
+  durationMs: number | null
+  errorMessage: string | null
+  startedAt: string
+  completedAt: string | null
+}
 
 type Audit = {
   id: string
@@ -16,6 +28,7 @@ type Audit = {
   costUsd: number | null
   durationMs: number | null
   findings: FindingData[]
+  agentRuns: AgentRun[]
 }
 
 type Filter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'unverified'
@@ -84,6 +97,7 @@ export default function ReportPage() {
 
   if (!audit) return <div className="p-8 text-gray-400">Loading…</div>
 
+  const isLive = audit.status === 'queued' || audit.status === 'running'
   const counts = countBySeverity(audit.findings)
   const confirmed  = audit.findings.filter(f => !f.unverified)
   const unverified = audit.findings.filter(f =>  f.unverified)
@@ -96,8 +110,6 @@ export default function ReportPage() {
 
   const showUnverified = filter === 'unverified' || filter === 'all'
 
-  const hasSomeFindings = audit.findings.length > 0
-
   return (
     <main className="max-w-2xl mx-auto p-8">
       <a href="/" className="text-sm text-blue-600 hover:underline">← New audit</a>
@@ -105,17 +117,19 @@ export default function ReportPage() {
       <h1 className="text-2xl font-bold mt-4 mb-1">Audit Report</h1>
       <p className="text-gray-500 text-sm mb-6 break-all">{audit.url}</p>
 
-      {(audit.status === 'queued' || audit.status === 'running') && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center gap-2">
-          <span className="animate-pulse">●</span>
-          Auditing…{audit.pagesCrawled > 0 ? ` ${audit.pagesCrawled} pages crawled` : ''}
-        </div>
-      )}
-
       {audit.status === 'failed' && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           Audit failed
         </div>
+      )}
+
+      {/* Pipeline progress — always show while live, collapsible when done */}
+      {(isLive || audit.agentRuns.length > 0) && (
+        <PipelineStatus
+          auditStatus={audit.status}
+          pagesCrawled={audit.pagesCrawled}
+          agentRuns={audit.agentRuns}
+        />
       )}
 
       {audit.trustScore !== null && (
@@ -128,9 +142,8 @@ export default function ReportPage() {
         />
       )}
 
-      {hasSomeFindings && (
+      {audit.findings.length > 0 && (
         <>
-          {/* Severity filter tabs */}
           <div className="flex gap-2 flex-wrap mb-5">
             {FILTER_LABELS.map(({ key, label }) => {
               const count = counts[key]
@@ -159,7 +172,6 @@ export default function ReportPage() {
             })}
           </div>
 
-          {/* Confirmed findings */}
           {visibleFindings.length > 0 ? (
             <div className="space-y-3 mb-6">
               {visibleFindings.map(f => <FindingCard key={f.id} finding={f} />)}
@@ -168,7 +180,6 @@ export default function ReportPage() {
             <p className="text-sm text-gray-400 mb-6">No {filter} findings.</p>
           )}
 
-          {/* Unverified section */}
           {showUnverified && unverified.length > 0 && (
             <div className="mt-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">

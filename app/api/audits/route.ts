@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 
+export async function GET() {
+  const audits = await db.audit.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: {
+      id:              true,
+      url:             true,
+      status:          true,
+      trustScore:      true,
+      reliabilityScore: true,
+      uxScore:         true,
+      pagesCrawled:    true,
+      durationMs:      true,
+      costUsd:         true,
+      createdAt:       true,
+      completedAt:     true,
+    },
+  })
+  return NextResponse.json(audits)
+}
+
 const schema = z.object({
   url: z.string().url('Must be a valid URL'),
 })
