@@ -54,7 +54,7 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
 
   const llm = new ChatOpenAI({
     model,
-    openAIApiKey: process.env.NVIDIA_API_KEY ?? '',
+    apiKey: process.env.NVIDIA_API_KEY ?? '',
     configuration: { baseURL: NVIDIA_BASE_URL },
     maxTokens,
     temperature: 0.2,
