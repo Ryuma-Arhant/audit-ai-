@@ -139,3 +139,24 @@ test('trustScore equals reliabilityScore when uxScore is null', async () => {
   expect(scores.trustScore).toBe(scores.reliabilityScore)
   expect(scores.uxScore).toBeNull()
 })
+
+test('trustScore uses weighted formula when uxScore provided', async () => {
+  const audit = await makeAudit()
+  // reliabilityScore = 100 (no findings), uxScore = 80
+  // trustScore = round(100 * 0.7 + 80 * 0.3) = round(70 + 24) = 94
+  const scores = await computeScores(audit.id, 80)
+  expect(scores.reliabilityScore).toBe(100)
+  expect(scores.uxScore).toBe(80)
+  expect(scores.trustScore).toBe(94)
+})
+
+test('ceiling applies to weighted trustScore', async () => {
+  const audit = await makeAudit()
+  await makeFinding(audit.id, 'critical', 1.0)
+  // reliabilityScore = 80, ceiling = 59, uxScore = 100
+  // rawTrust = round(80 * 0.7 + 100 * 0.3) = round(56 + 30) = 86
+  // trustScore = min(86, 59) = 59
+  const scores = await computeScores(audit.id, 100)
+  expect(scores.trustScore).toBe(59)
+  expect(scores.uxScore).toBe(100)
+})

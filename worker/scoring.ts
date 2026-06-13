@@ -16,7 +16,7 @@ const DEDUCTIONS: Record<string, { each: number; cap: number }> = {
 
 const DATA_LOSS_TYPES = new Set(['persistence_loss', 'auth_dead_end'])
 
-export async function computeScores(auditId: string): Promise<ScoreResult> {
+export async function computeScores(auditId: string, uxScoreOverride: number | null = null): Promise<ScoreResult> {
   const findings = await db.finding.findMany({
     where: { auditId },
     select: { severity: true, confidence: true, type: true, unverified: true },
@@ -38,23 +38,18 @@ export async function computeScores(auditId: string): Promise<ScoreResult> {
   score -= Math.min(suspicious.length, 10)
   const reliabilityScore = Math.max(0, score)
 
-  // Ceilings apply to trustScore only (design: "Max Trust Score")
   const confirmedCriticals = confirmed.filter(f => f.severity === 'critical')
   const hasDataLoss = confirmedCriticals.some(f => DATA_LOSS_TYPES.has(f.type))
 
   let ceiling = 100
-  if (confirmedCriticals.length >= 2 || hasDataLoss) {
-    ceiling = 39
-  } else if (confirmedCriticals.length === 1) {
-    ceiling = 59
-  }
+  if (confirmedCriticals.length >= 2 || hasDataLoss) ceiling = 39
+  else if (confirmedCriticals.length === 1) ceiling = 59
 
-  const trustScore = Math.min(reliabilityScore, ceiling)
+  const uxScore = uxScoreOverride
+  const rawTrust = uxScore !== null
+    ? Math.round(reliabilityScore * 0.7 + uxScore * 0.3)
+    : reliabilityScore
+  const trustScore = Math.min(rawTrust, ceiling)
 
-  return {
-    reliabilityScore,
-    uxScore: null,
-    trustScore,
-    scoreBreakdown: breakdown,
-  }
+  return { reliabilityScore, uxScore, trustScore, scoreBreakdown: breakdown }
 }

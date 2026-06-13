@@ -6,6 +6,13 @@ import { checkBrokenLinks } from './checks/broken-links'
 import { checkActions } from './checks/action-testing'
 import { checkStalls } from './checks/stall-detection'
 import { checkPersistence } from './checks/persistence'
+import { uiInferrer } from './agents/ui-inferrer'
+import { errorClassifier } from './agents/error-classifier'
+import { testGenerator } from './agents/test-generator'
+import { agenticExplorer } from './agents/agentic-explorer'
+import { rootCauseAnalyzer } from './agents/root-cause-analyzer'
+import { aiJudge } from './agents/ai-judge'
+import { reportSynthesizer } from './agents/report-synthesizer'
 import { computeScores } from './scoring'
 
 const MAX_CRAWL_RETRIES = 2
@@ -33,16 +40,12 @@ export async function runPipeline(auditId: string): Promise<void> {
   if (crawlError) {
     await db.audit.update({
       where: { id: auditId },
-      data: {
-        status: 'failed',
-        errorMessage: `Crawl failed after ${MAX_CRAWL_RETRIES} attempts: ${crawlError.message}`,
-        completedAt: new Date(),
-      },
+      data: { status: 'failed', errorMessage: `Crawl failed: ${crawlError.message}`, completedAt: new Date() },
     })
     return
   }
 
-  // Phase 2: Deterministic checks — all 6 in parallel, each independently recoverable
+  // Phase 2: Deterministic checks — all 6 in parallel
   const checkResults = await Promise.allSettled([
     checkHttpStatus(auditId),
     checkConsoleErrors(auditId),
@@ -51,17 +54,43 @@ export async function runPipeline(auditId: string): Promise<void> {
     checkStalls(auditId),
     checkPersistence(auditId),
   ])
+  for (const [i, r] of checkResults.entries()) {
+    if (r.status === 'rejected') console.error(`[pipeline] check ${CHECK_NAMES[i]} failed:`, r.reason?.message ?? r.reason)
+  }
 
-  for (const [i, result] of checkResults.entries()) {
-    if (result.status === 'rejected') {
-      console.error(`[pipeline] check ${CHECK_NAMES[i]} failed:`, result.reason?.message ?? result.reason)
+  // Phase A: ui-inferrer + error-classifier in parallel
+  const [uiResult] = await Promise.allSettled([
+    uiInferrer(auditId),
+    errorClassifier(auditId),
+  ])
+  const intents = uiResult.status === 'fulfilled' ? uiResult.value : []
+
+  // Phase B: test-generator → agentic-explorer (sequential, skip if no intents)
+  if (uiResult.status === 'fulfilled' && intents.length > 0) {
+    try {
+      const specs = await testGenerator(auditId, intents)
+      await agenticExplorer(auditId, specs)
+    } catch (err) {
+      console.error('[pipeline] Phase B failed:', err instanceof Error ? err.message : err)
     }
   }
 
-  // Phase 3: Score
-  const scores = await computeScores(auditId)
+  // Phase C: root-cause-analyzer + ai-judge in parallel
+  const [, judgeResult] = await Promise.allSettled([
+    rootCauseAnalyzer(auditId),
+    uiResult.status === 'fulfilled' ? aiJudge(auditId, intents) : Promise.resolve(null),
+  ])
+  const uxScore = judgeResult.status === 'fulfilled' ? judgeResult.value : null
 
-  // Phases 4–5: agents + synthesis (stubs — Plan 4)
+  // Phase D: report-synthesizer
+  try {
+    await reportSynthesizer(auditId)
+  } catch (err) {
+    console.error('[pipeline] report-synthesizer failed:', err instanceof Error ? err.message : err)
+  }
+
+  // Final scoring + write result
+  const scores = await computeScores(auditId, uxScore)
   const tokenAgg = await db.tokenLog.aggregate({ where: { auditId }, _sum: { costUsd: true } })
 
   await db.audit.update({
