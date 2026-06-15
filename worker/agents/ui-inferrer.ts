@@ -11,7 +11,7 @@ export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
     const pages = await db.page.findMany({ where: { auditId } })
     const allIntents: InferredIntent[] = []
 
-    const pagesToProcess = pages.slice(0, 5)
+    const pagesToProcess = pages.slice(0, 16)
 
     // Pre-read all screenshots in parallel, aligned by index with pagesToProcess.
     const screenshots = await Promise.all(

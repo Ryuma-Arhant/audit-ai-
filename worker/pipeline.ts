@@ -25,7 +25,7 @@ export async function runPipeline(auditId: string): Promise<void> {
   const t0 = Date.now()
   const audit = await db.audit.findUniqueOrThrow({ where: { id: auditId } })
   const config = parseConfig<{ maxPages?: number }>(audit.config)
-  const maxPages = config.maxPages ?? 15
+  const maxPages = config.maxPages ?? 16
 
   // Phase 1: Crawl — retry up to MAX_CRAWL_RETRIES on failure
   let crawlError: Error | null = null

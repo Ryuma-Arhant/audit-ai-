@@ -12,11 +12,10 @@ interface ScoreRingProps {
   trustScore: number
   reliabilityScore: number | null
   uxScore: number | null
-  costUsd: number | null
   durationMs: number | null
 }
 
-export function ScoreRing({ trustScore, reliabilityScore, uxScore, costUsd, durationMs }: ScoreRingProps) {
+export function ScoreRing({ trustScore, reliabilityScore, uxScore, durationMs }: ScoreRingProps) {
   const color = scoreColor(trustScore)
   const offset = CIRCUMFERENCE * (1 - trustScore / 100)
 
@@ -69,7 +68,6 @@ export function ScoreRing({ trustScore, reliabilityScore, uxScore, costUsd, dura
       <div className="mt-2 flex justify-center gap-4 text-xs text-gray-400 flex-wrap px-4">
         <span>Reliability <strong className="text-gray-600">{reliabilityScore ?? '—'}</strong></span>
         <span>UX <strong className="text-gray-600">{uxScore ?? '—'}</strong></span>
-        {costUsd    !== null && <span>${costUsd.toFixed(4)}</span>}
         {durationMs !== null && <span>{(durationMs / 1000).toFixed(1)}s</span>}
       </div>
     </div>

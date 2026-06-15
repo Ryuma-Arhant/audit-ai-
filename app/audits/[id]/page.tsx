@@ -140,7 +140,6 @@ export default function ReportPage() {
           trustScore={audit.trustScore}
           reliabilityScore={audit.reliabilityScore}
           uxScore={audit.uxScore}
-          costUsd={audit.costUsd}
           durationMs={audit.durationMs}
         />
       )}
