@@ -1,4 +1,4 @@
-import { callClaude, CostCapError, MODEL_FAST } from '@/lib/claude'
+import { callClaude, CostCapError, MODEL_FAST, clearAuditCostCache } from '@/lib/claude'
 import { parseConfig } from '@/lib/config'
 import { db } from '@/lib/db'
 
@@ -31,6 +31,11 @@ beforeEach(async () => {
     },
   })
   auditId = audit.id
+})
+
+afterEach(() => {
+  // Reset the in-process cost accumulator so state does not leak between tests.
+  clearAuditCostCache(auditId)
 })
 
 afterAll(() => db.$disconnect())

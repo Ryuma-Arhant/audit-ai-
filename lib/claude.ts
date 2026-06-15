@@ -41,6 +41,20 @@ const PRICE: { input: number; output: number } = { input: 8.0, output: 8.0 }
 // Pricing for llama-3.1-8b-instruct (MODEL_FAST): $0.18/MTok in+out
 const PRICE_FAST: { input: number; output: number } = { input: 0.18, output: 0.18 }
 
+// ─── Per-audit in-process cost accumulator ───
+
+// Tracks accumulated spend per audit atomically in-process to prevent a
+// TOCTOU race where two concurrent callClaude calls both pass the cost-cap
+// check (reading the same DB total) before either logs its cost.
+// Seeded from DB on first call per audit; updated before each LLM call.
+const _auditCostMap = new Map<string, number>()  // auditId -> accumulated cost
+const _auditLimitMap = new Map<string, number>() // auditId -> cost limit
+
+export function clearAuditCostCache(auditId: string): void {
+  _auditCostMap.delete(auditId)
+  _auditLimitMap.delete(auditId)
+}
+
 // ─── callClaude ───
 
 export interface CallClaudeParams {
@@ -55,7 +69,15 @@ export interface CallClaudeParams {
 export async function callClaude(params: CallClaudeParams): Promise<LLMResponse> {
   const { auditId, agentName, model, messages, system, maxTokens = 1024 } = params
 
-  await enforceCostCap(auditId)
+  // Select price up-front so we can estimate cost for the cap check.
+  const price = model === MODEL_FAST ? PRICE_FAST : PRICE
+
+  // Conservative upper bound: maxTokens output + ~2000 input tokens.
+  const estimatedCost =
+    (2000 / 1_000_000) * price.input +
+    (maxTokens / 1_000_000) * price.output
+
+  await enforceCostCap(auditId, estimatedCost)
 
   const llm = new ChatOpenAI({
     model,
@@ -99,7 +121,6 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
 
   const inputTokens  = response.usage_metadata?.input_tokens  ?? 0
   const outputTokens = response.usage_metadata?.output_tokens ?? 0
-  const price = model === MODEL_FAST ? PRICE_FAST : PRICE
   const costUsd =
     (inputTokens  / 1_000_000) * price.input +
     (outputTokens / 1_000_000) * price.output
@@ -108,25 +129,44 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
     data: { auditId, agentName, model, inputTokens, outputTokens, costUsd },
   })
 
+  // Replace the reserved estimate with the actual cost in the accumulator.
+  _auditCostMap.set(
+    auditId,
+    (_auditCostMap.get(auditId) ?? estimatedCost) - estimatedCost + costUsd
+  )
+
   return {
     content: [{ type: 'text', text }],
     usage: { input_tokens: inputTokens, output_tokens: outputTokens },
   }
 }
 
-async function enforceCostCap(auditId: string): Promise<void> {
-  const [audit, agg] = await Promise.all([
-    db.audit.findUnique({ where: { id: auditId }, select: { config: true } }),
-    db.tokenLog.aggregate({ where: { auditId }, _sum: { costUsd: true } }),
-  ])
-  const config = parseConfig<{ costLimitUsd?: number }>(audit?.config)
-  const limit = config.costLimitUsd ?? 0.50
-  const spent = agg._sum.costUsd ?? 0
-  if (spent >= limit) {
+async function enforceCostCap(auditId: string, estimatedCost: number): Promise<void> {
+  // Seed the in-process accumulator from the DB on the first call per audit.
+  if (!_auditCostMap.has(auditId)) {
+    const [audit, agg] = await Promise.all([
+      db.audit.findUnique({ where: { id: auditId }, select: { config: true } }),
+      db.tokenLog.aggregate({ where: { auditId }, _sum: { costUsd: true } }),
+    ])
+    const config = parseConfig<{ costLimitUsd?: number }>(audit?.config)
+    _auditLimitMap.set(auditId, config.costLimitUsd ?? 0.50)
+    // Double-check: another concurrent call may have seeded the map while we awaited.
+    if (!_auditCostMap.has(auditId)) {
+      _auditCostMap.set(auditId, agg._sum.costUsd ?? 0)
+    }
+  }
+
+  const limit = _auditLimitMap.get(auditId) ?? 0.50
+  const current = _auditCostMap.get(auditId) ?? 0
+  if (current + estimatedCost > limit) {
     throw new CostCapError(
-      `Cost cap $${limit} reached (spent $${spent.toFixed(4)}) for audit ${auditId}`
+      `Cost cap $${limit} reached (spent $${current.toFixed(4)}) for audit ${auditId}`
     )
   }
+  // Reserve the estimated cost atomically before the LLM call. This guards
+  // concurrent calls: the second caller sees the first's reservation and
+  // throws if the cap would be exceeded.
+  _auditCostMap.set(auditId, current + estimatedCost)
 }
 
 export class CostCapError extends Error {

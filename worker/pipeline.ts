@@ -15,6 +15,7 @@ import { rootCauseAnalyzer } from './agents/root-cause-analyzer'
 import { aiJudge } from './agents/ai-judge'
 import { reportSynthesizer } from './agents/report-synthesizer'
 import { computeScores } from './scoring'
+import { clearAuditCostCache } from '../lib/claude'
 
 const MAX_CRAWL_RETRIES = 2
 const CHECK_NAMES = ['http-status', 'console-errors', 'broken-links', 'action-testing', 'stall-detection', 'persistence']
@@ -43,6 +44,7 @@ export async function runPipeline(auditId: string): Promise<void> {
       where: { id: auditId },
       data: { status: 'failed', errorMessage: `Crawl failed: ${crawlError.message}`, completedAt: new Date() },
     })
+    clearAuditCostCache(auditId)
     return
   }
 
@@ -107,4 +109,7 @@ export async function runPipeline(auditId: string): Promise<void> {
       completedAt: new Date(),
     },
   })
+
+  // Release the in-process cost accumulator for this audit.
+  clearAuditCostCache(auditId)
 }
