@@ -32,7 +32,7 @@ export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
     for (let i = 0; i < pagesToProcess.length; i++) {
       const pageRecord = pagesToProcess[i]
       const screenshotBase64 = screenshots[i]
-      const actions = JSON.parse(pageRecord.actions) as Array<{ type: string; label: string; selector: string }>
+      const actions = (JSON.parse(pageRecord.actions) as Array<{ type: string; label: string; selector: string }>).slice(0, 20)
       if (actions.length === 0) continue
 
       const userText = `Analyze this web page and infer the purpose of each interactive element.
@@ -71,7 +71,7 @@ Return ONLY the JSON array.`
         model: screenshotBase64 ? MODEL_VISION : MODEL_CAPABLE,
         messages,
         system: 'You are a UI analyst. Return only valid JSON.',
-        maxTokens: 1024,
+        maxTokens: 4096,
       })
 
       const text = response.content.find(b => b.type === 'text')?.text ?? '[]'
