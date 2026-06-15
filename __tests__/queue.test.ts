@@ -49,6 +49,24 @@ test('dequeue returns oldest queued audit first', async () => {
   expect(id).toBe(first.id)
 })
 
+test('concurrent dequeue on a single queued audit returns distinct results', async () => {
+  const audit = await db.audit.create({
+    data: { url: 'https://example.com', status: 'queued', config: JSON.stringify({}) },
+  })
+  const q = new SQLiteQueue()
+
+  const [a, b] = await Promise.all([q.dequeue(), q.dequeue()])
+
+  // Exactly one caller claims the audit; the other gets null.
+  const results = [a, b]
+  expect(results).toContain(audit.id)
+  expect(results).toContain(null)
+  expect(a).not.toBe(b)
+
+  const updated = await db.audit.findUnique({ where: { id: audit.id } })
+  expect(updated?.status).toBe('running')
+})
+
 test('fail sets status to failed with errorMessage and completedAt', async () => {
   const audit = await db.audit.create({
     data: { url: 'https://example.com', status: 'running', config: JSON.stringify({}) },
