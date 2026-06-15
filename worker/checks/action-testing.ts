@@ -1,4 +1,4 @@
-import { chromium } from 'playwright'
+import { getSharedBrowser, releaseSharedBrowser } from '../browser'
 import { db } from '../../lib/db'
 
 interface ActionEntry { type: string; label: string; selector: string }
@@ -6,7 +6,7 @@ interface ActionEntry { type: string; label: string; selector: string }
 export async function checkActions(auditId: string): Promise<void> {
   const pages = await db.page.findMany({ where: { auditId } })
 
-  const browser = await chromium.launch({ headless: true })
+  const browser = await getSharedBrowser(auditId)
   try {
     for (const pageRecord of pages) {
       const actions: ActionEntry[] = JSON.parse(pageRecord.actions)
@@ -76,6 +76,6 @@ export async function checkActions(auditId: string): Promise<void> {
       }
     }
   } finally {
-    await browser.close()
+    await releaseSharedBrowser(auditId)
   }
 }

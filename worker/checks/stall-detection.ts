@@ -1,4 +1,4 @@
-import { chromium } from 'playwright'
+import { getSharedBrowser, releaseSharedBrowser } from '../browser'
 import { db } from '../../lib/db'
 
 const STALL_SELECTORS = [
@@ -14,7 +14,7 @@ const WAIT_MS = 5000
 export async function checkStalls(auditId: string): Promise<void> {
   const pages = await db.page.findMany({ where: { auditId } })
 
-  const browser = await chromium.launch({ headless: true })
+  const browser = await getSharedBrowser(auditId)
   try {
     for (const pageRecord of pages) {
       const context = await browser.newContext()
@@ -72,6 +72,6 @@ export async function checkStalls(auditId: string): Promise<void> {
       }
     }
   } finally {
-    await browser.close()
+    await releaseSharedBrowser(auditId)
   }
 }
