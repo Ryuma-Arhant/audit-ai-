@@ -27,6 +27,29 @@ const schema = z.object({
   url: z.string().url('Must be a valid URL'),
 })
 
+// Block SSRF: reject private/internal/link-local hosts and non-http(s) protocols.
+export function validateCrawlTarget(url: string): string | null {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return 'Invalid URL'
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return 'Only http/https URLs allowed'
+  }
+  // Strip IPv6 brackets if present (e.g. "[::1]" -> "::1").
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (host === 'localhost') return 'URL not allowed'
+  if (/^127\./.test(host)) return 'URL not allowed'             // loopback
+  if (/^10\./.test(host)) return 'URL not allowed'              // private class A
+  if (/^192\.168\./.test(host)) return 'URL not allowed'        // private class C
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return 'URL not allowed' // private class B
+  if (/^169\.254\./.test(host)) return 'URL not allowed'        // link-local / cloud metadata
+  if (host === '::1') return 'URL not allowed'                  // IPv6 loopback
+  return null
+}
+
 export async function POST(req: Request) {
   let body: unknown
   try {
@@ -41,6 +64,11 @@ export async function POST(req: Request) {
       { error: parsed.error.issues[0]?.message ?? 'Invalid request' },
       { status: 400 }
     )
+  }
+
+  const ssrfError = validateCrawlTarget(parsed.data.url)
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 })
   }
 
   const audit = await db.audit.create({

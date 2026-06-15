@@ -51,6 +51,54 @@ describe('POST /api/audits', () => {
     const res = await POST(req)
     expect(res.status).toBe(400)
   })
+
+  describe('SSRF protection', () => {
+    const blocked = [
+      'http://localhost/',
+      'http://LOCALHOST/',
+      'http://127.0.0.1/',
+      'http://127.1.2.3/',
+      'http://10.0.0.1/',
+      'http://192.168.1.1/',
+      'http://172.16.0.1/',
+      'http://172.20.5.5/',
+      'http://172.31.255.255/',
+      'http://169.254.169.254/latest/meta-data/', // AWS metadata
+      'http://[::1]/',
+      'file:///etc/passwd',
+      'ftp://example.com/',
+    ]
+
+    test.each(blocked)('blocks %s with 400 and does not create audit', async (url) => {
+      const req = new Request('http://localhost/api/audits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toBeDefined()
+      expect(await db.audit.count()).toBe(0)
+    })
+
+    const allowed = [
+      'https://example.com',
+      'http://example.com/path',
+      'https://172.15.0.1/',  // just outside private class B range
+      'https://172.32.0.1/',  // just outside private class B range
+    ]
+
+    test.each(allowed)('allows public URL %s', async (url) => {
+      const req = new Request('http://localhost/api/audits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+    })
+  })
 })
 
 describe('GET /api/audits/[id]', () => {
