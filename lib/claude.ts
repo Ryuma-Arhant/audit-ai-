@@ -1,6 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
 import { db } from './db'
+import { parseConfig } from './config'
 
 // ─── Local message types ───
 
@@ -30,6 +31,7 @@ export interface LLMResponse {
 
 export const MODEL_CAPABLE = 'nvidia/nemotron-3-ultra-550b-a55b'
 export const MODEL_FAST    = 'nvidia/nemotron-3-ultra-550b-a55b'
+export const MODEL_VISION  = 'meta/llama-3.2-90b-vision-instruct'
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1'
 
@@ -58,6 +60,7 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
     configuration: { baseURL: NVIDIA_BASE_URL },
     maxTokens,
     temperature: 0.2,
+    timeout: 120_000,
   })
 
   const lcMessages = []
@@ -112,7 +115,7 @@ async function enforceCostCap(auditId: string): Promise<void> {
     db.audit.findUnique({ where: { id: auditId }, select: { config: true } }),
     db.tokenLog.aggregate({ where: { auditId }, _sum: { costUsd: true } }),
   ])
-  const config = JSON.parse(audit?.config ?? '{}') as { costLimitUsd?: number }
+  const config = parseConfig<{ costLimitUsd?: number }>(audit?.config)
   const limit = config.costLimitUsd ?? 0.50
   const spent = agg._sum.costUsd ?? 0
   if (spent >= limit) {

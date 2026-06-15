@@ -1,4 +1,5 @@
 import { db } from '../lib/db'
+import { parseConfig } from '../lib/config'
 import { crawl } from './crawler'
 import { checkHttpStatus } from './checks/http-status'
 import { checkConsoleErrors } from './checks/console-errors'
@@ -21,7 +22,7 @@ const CHECK_NAMES = ['http-status', 'console-errors', 'broken-links', 'action-te
 export async function runPipeline(auditId: string): Promise<void> {
   const t0 = Date.now()
   const audit = await db.audit.findUniqueOrThrow({ where: { id: auditId } })
-  const config = JSON.parse(audit.config ?? '{}') as { maxPages?: number }
+  const config = parseConfig<{ maxPages?: number }>(audit.config)
   const maxPages = config.maxPages ?? 15
 
   // Phase 1: Crawl — retry up to MAX_CRAWL_RETRIES on failure

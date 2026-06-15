@@ -1,4 +1,5 @@
 import { callClaude, CostCapError, MODEL_FAST } from '@/lib/claude'
+import { parseConfig } from '@/lib/config'
 import { db } from '@/lib/db'
 
 jest.mock('@langchain/openai', () => ({
@@ -83,4 +84,11 @@ test('callClaude throws CostCapError when accumulated cost exceeds limit', async
       messages: [{ role: 'user', content: 'hello' }],
     })
   ).rejects.toThrow(CostCapError)
+})
+
+test('parseConfig returns {} on malformed JSON', () => {
+  expect(parseConfig('{bad')).toEqual({})
+  expect(parseConfig(null)).toEqual({})
+  expect(parseConfig(undefined)).toEqual({})
+  expect(parseConfig('{"key": 1}')).toEqual({ key: 1 })
 })
