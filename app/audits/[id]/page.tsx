@@ -127,7 +127,7 @@ export default function ReportPage() {
       )}
 
       {/* Pipeline progress — always show while live, collapsible when done */}
-      {(isLive || audit.agentRuns.length > 0) && (
+      {audit.status !== 'failed' && (isLive || audit.agentRuns.length > 0) && (
         <PipelineStatus
           auditStatus={audit.status}
           pagesCrawled={audit.pagesCrawled}
