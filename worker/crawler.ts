@@ -60,7 +60,7 @@ export async function crawl(config: CrawlerConfig): Promise<void> {
   const { auditId, startUrl, maxPages } = config
   const origin = new URL(startUrl).origin
 
-  const artifactDir = path.join(process.cwd(), 'public', 'artifacts', auditId)
+  const artifactDir = path.join(process.cwd(), 'data', 'artifacts', auditId)
   await fs.mkdir(artifactDir, { recursive: true })
 
   const browser = await chromium.launch({ headless: true })
@@ -106,7 +106,7 @@ export async function crawl(config: CrawlerConfig): Promise<void> {
 
         const screenshotFile = path.join(artifactDir, `${pageIndex}.png`)
         await page.screenshot({ path: screenshotFile, fullPage: true })
-        const screenshotPath = `/artifacts/${auditId}/${pageIndex}.png`
+        const screenshotPath = `/api/artifacts/${auditId}/${pageIndex}.png`
 
         const links: LinkEntry[] = await page.$$eval('a[href]', els =>
           (els as HTMLAnchorElement[]).map(el => ({

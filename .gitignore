@@ -45,3 +45,7 @@ next-env.d.ts
 dev.db
 test.db
 public/artifacts/
+/data/*
+!/data/artifacts/
+/data/artifacts/*
+!/data/artifacts/.gitkeep

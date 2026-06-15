@@ -18,7 +18,10 @@ export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
       let screenshotBase64: string | null = null
       if (pageRecord.screenshotPath) {
         try {
-          const buf = await fs.readFile(path.join(process.cwd(), 'public', pageRecord.screenshotPath))
+          // screenshotPath is the API URL (/api/artifacts/{auditId}/{n}.png);
+          // map it back to the on-disk location under data/artifacts/.
+          const diskRel = pageRecord.screenshotPath.replace(/^\/api\/artifacts\//, '')
+          const buf = await fs.readFile(path.join(process.cwd(), 'data', 'artifacts', diskRel))
           screenshotBase64 = buf.toString('base64')
         } catch { /* no screenshot in test env — proceed text-only */ }
       }

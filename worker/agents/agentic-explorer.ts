@@ -8,7 +8,7 @@ export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): 
   return trackAgentRun(auditId, 'agentic-explorer', 2, { specsCount: specs.length }, async () => {
     if (specs.length === 0) return []
 
-    const artifactDir = path.join(process.cwd(), 'public', 'artifacts', auditId)
+    const artifactDir = path.join(process.cwd(), 'data', 'artifacts', auditId)
     await fs.mkdir(artifactDir, { recursive: true })
 
     const results: FlowResult[] = []
@@ -38,7 +38,7 @@ export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): 
           const idx = results.length
           const screenshotFile = path.join(artifactDir, `flow-${idx}.png`)
           await page.screenshot({ path: screenshotFile, fullPage: true })
-          screenshotPath = `/artifacts/${auditId}/flow-${idx}.png`
+          screenshotPath = `/api/artifacts/${auditId}/flow-${idx}.png`
 
           results.push({
             specName: spec.name,
@@ -53,7 +53,7 @@ export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): 
           try {
             const screenshotFile = path.join(artifactDir, `flow-${idx}-fail.png`)
             await page.screenshot({ path: screenshotFile, fullPage: true })
-            screenshotPath = `/artifacts/${auditId}/flow-${idx}-fail.png`
+            screenshotPath = `/api/artifacts/${auditId}/flow-${idx}-fail.png`
           } catch { /* ignore */ }
           results.push({
             specName: spec.name,
