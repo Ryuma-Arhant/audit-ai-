@@ -1,6 +1,6 @@
 import path from 'path'
 import fs from 'fs/promises'
-import { callClaude, MODEL_CAPABLE } from '../../lib/claude'
+import { callClaude, MODEL_CAPABLE, MODEL_VISION } from '../../lib/claude'
 import type { MessageParam, ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
@@ -68,7 +68,7 @@ Return ONLY the JSON array.`
       const response = await callClaude({
         auditId,
         agentName: 'ui-inferrer',
-        model: MODEL_CAPABLE,
+        model: screenshotBase64 ? MODEL_VISION : MODEL_CAPABLE,
         messages,
         system: 'You are a UI analyst. Return only valid JSON.',
         maxTokens: 1024,

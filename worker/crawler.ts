@@ -96,7 +96,7 @@ export async function crawl(config: CrawlerConfig): Promise<void> {
         const t0 = Date.now()
         const response = await page.goto(rawUrl, {
           waitUntil: 'domcontentloaded',
-          timeout: 15000,
+          timeout: 30000,
         })
         const httpStatus = response?.status() ?? 0
 
