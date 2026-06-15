@@ -1,6 +1,7 @@
 import { POST } from '@/app/api/audits/route'
 import { GET } from '@/app/api/audits/[id]/route'
 import { db } from '@/lib/db'
+import { _resetRateLimit } from '@/lib/ratelimit'
 
 async function clearDb() {
   await db.tokenLog.deleteMany()
@@ -11,6 +12,7 @@ async function clearDb() {
 }
 
 beforeEach(clearDb)
+beforeEach(_resetRateLimit)
 afterAll(() => db.$disconnect())
 
 describe('POST /api/audits', () => {
@@ -98,6 +100,60 @@ describe('POST /api/audits', () => {
       const res = await POST(req)
       expect(res.status).toBe(200)
     })
+  })
+})
+
+describe('rate limiting', () => {
+  // The rate limiter uses a module-level Map. Re-import the route module in an
+  // isolated registry for each test so window state never leaks between tests.
+  async function loadPost() {
+    let mod: typeof import('@/app/api/audits/route')
+    await jest.isolateModulesAsync(async () => {
+      mod = await import('@/app/api/audits/route')
+    })
+    return mod!.POST
+  }
+
+  function makeReq(ip: string) {
+    return new Request('http://localhost/api/audits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ url: 'https://example.com' }),
+    })
+  }
+
+  test('allows 5 requests from the same IP within the window', async () => {
+    const POST = await loadPost()
+    for (let i = 0; i < 5; i++) {
+      const res = await POST(makeReq('1.1.1.1'))
+      expect(res.status).toBe(200)
+    }
+  })
+
+  test('6th request from same IP returns 429 with Retry-After header', async () => {
+    const POST = await loadPost()
+    for (let i = 0; i < 5; i++) {
+      const res = await POST(makeReq('2.2.2.2'))
+      expect(res.status).toBe(200)
+    }
+    const res = await POST(makeReq('2.2.2.2'))
+    expect(res.status).toBe(429)
+    const retryAfter = res.headers.get('Retry-After')
+    expect(retryAfter).not.toBeNull()
+    expect(Number(retryAfter)).toBeGreaterThan(0)
+    const body = await res.json()
+    expect(body.error).toBe('Too many requests')
+  })
+
+  test('requests from different IPs are independent', async () => {
+    const POST = await loadPost()
+    // Exhaust the limit for IP A.
+    for (let i = 0; i < 5; i++) {
+      expect((await POST(makeReq('3.3.3.3'))).status).toBe(200)
+    }
+    expect((await POST(makeReq('3.3.3.3'))).status).toBe(429)
+    // IP B still has a fresh window.
+    expect((await POST(makeReq('4.4.4.4'))).status).toBe(200)
   })
 })
 

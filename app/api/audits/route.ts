@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit } from '@/lib/ratelimit'
 
 export async function GET(req: Request) {
   const authErr = checkAuth(req)
@@ -57,6 +58,15 @@ export function validateCrawlTarget(url: string): string | null {
 export async function POST(req: Request) {
   const authErr = checkAuth(req)
   if (authErr) return authErr
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const rl = checkRateLimit(ip)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } }
+    )
+  }
 
   let body: unknown
   try {
