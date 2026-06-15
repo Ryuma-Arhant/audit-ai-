@@ -1,5 +1,3 @@
-import path from 'path'
-import fs from 'fs/promises'
 import { callClaude, MODEL_CAPABLE } from '../../lib/claude'
 import type { ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
@@ -8,23 +6,17 @@ import type { InferredIntent } from './types'
 
 export async function aiJudge(auditId: string, intents: InferredIntent[]): Promise<number | null> {
   return trackAgentRun(auditId, 'ai-judge', 3, { intents: intents.length }, async () => {
+    console.log('[ai-judge] Running in text-only mode (no screenshots)')
+
     const pages = await db.page.findMany({ where: { auditId } })
     if (pages.length === 0) return null
 
-    const imageBlocks: ContentBlock[] = []
-    for (const pageRecord of pages.slice(0, 3)) {
-      if (!pageRecord.screenshotPath) continue
-      try {
-        const buf = await fs.readFile(path.join(process.cwd(), 'public', pageRecord.screenshotPath))
-        imageBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: buf.toString('base64') } })
-      } catch { /* no screenshot */ }
-    }
-
     const textBlock = `You are a UX quality judge for AI-generated web apps.
+
+IMPORTANT: No screenshot images are available. Evaluate UX based solely on page structure, titles, and interactive elements listed below.
 
 Pages crawled: ${pages.length}
 Inferred UI intents: ${JSON.stringify(intents.slice(0, 10), null, 2)}
-${imageBlocks.length > 0 ? '[Screenshots attached above]' : '(No screenshots available)'}
 
 Rate UX quality (0-100) and identify specific UX issues.
 
@@ -39,9 +31,12 @@ Return JSON:
 
 UX score: 90-100 excellent, 70-89 good, 50-69 fair, 30-49 poor, 0-29 broken
 Types: ux_incoherence, auth_dead_end, hallucinated_route
+
+NOTE: Visual coherence and layout aesthetics cannot be assessed without screenshots. Focus evaluation on functional UX issues: broken navigation flows, missing expected UI elements, inconsistent state handling, and interaction problems.
+
 Return ONLY the JSON object.`
 
-    const content: ContentBlock[] = [...imageBlocks, { type: 'text', text: textBlock }]
+    const content: ContentBlock[] = [{ type: 'text', text: textBlock }]
 
     const response = await callClaude({
       auditId,
