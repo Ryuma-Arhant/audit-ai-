@@ -49,6 +49,9 @@ model Page {
   links          String    // stored as JSON string: { href, text, status }[]
   actions        String    // stored as JSON string: detected interactive elements
   contentHash    String?
+  bodyText       String?
+  metaTags       String?    // stored as JSON string
+  responseHeaders String?   // stored as JSON string
   discoveredAt   DateTime  @default(now())
   findings       Finding[]
 
