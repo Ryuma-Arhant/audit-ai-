@@ -1,7 +1,12 @@
+import * as Sentry from '@sentry/node'
 import { SQLiteQueue } from './queue'
 import { runPipeline } from './pipeline'
 import { db } from '../lib/db'
 import logger from '../lib/logger'
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0 })
+}
 
 const queue = new SQLiteQueue()
 const MAX_CONCURRENT_AUDITS = 3
@@ -32,6 +37,9 @@ let active = 0
 
     runPipeline(auditId)
       .catch(err => {
+        if (process.env.SENTRY_DSN) {
+          Sentry.captureException(err, { extra: { auditId } })
+        }
         logger.error({ auditId, err: err.message }, 'Audit failed')
         return queue.fail(auditId, err.message)
       })
