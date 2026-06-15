@@ -11,20 +11,29 @@ export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
     const pages = await db.page.findMany({ where: { auditId } })
     const allIntents: InferredIntent[] = []
 
-    for (const pageRecord of pages.slice(0, 5)) {
-      const actions = JSON.parse(pageRecord.actions) as Array<{ type: string; label: string; selector: string }>
-      if (actions.length === 0) continue
+    const pagesToProcess = pages.slice(0, 5)
 
-      let screenshotBase64: string | null = null
-      if (pageRecord.screenshotPath) {
+    // Pre-read all screenshots in parallel, aligned by index with pagesToProcess.
+    const screenshots = await Promise.all(
+      pagesToProcess.map(async (p) => {
+        if (!p.screenshotPath) return null
         try {
           // screenshotPath is the API URL (/api/artifacts/{auditId}/{n}.png);
           // map it back to the on-disk location under data/artifacts/.
-          const diskRel = pageRecord.screenshotPath.replace(/^\/api\/artifacts\//, '')
+          const diskRel = p.screenshotPath.replace(/^\/api\/artifacts\//, '')
           const buf = await fs.readFile(path.join(process.cwd(), 'data', 'artifacts', diskRel))
-          screenshotBase64 = buf.toString('base64')
-        } catch { /* no screenshot in test env — proceed text-only */ }
-      }
+          return buf.toString('base64')
+        } catch {
+          return null // no screenshot in test env — proceed text-only
+        }
+      })
+    )
+
+    for (let i = 0; i < pagesToProcess.length; i++) {
+      const pageRecord = pagesToProcess[i]
+      const screenshotBase64 = screenshots[i]
+      const actions = JSON.parse(pageRecord.actions) as Array<{ type: string; label: string; selector: string }>
+      if (actions.length === 0) continue
 
       const userText = `Analyze this web page and infer the purpose of each interactive element.
 

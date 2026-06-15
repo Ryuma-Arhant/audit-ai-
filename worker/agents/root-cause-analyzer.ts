@@ -41,14 +41,15 @@ Return ONLY the JSON array.`,
       const enrichments = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] ?? '[]') as Array<{
         id: string; reproduction?: string; description?: string
       }>
-      for (const e of enrichments) {
-        const data: Record<string, string> = {}
-        if (e.reproduction) data.reproduction = e.reproduction
-        if (e.description) data.description = e.description
-        if (Object.keys(data).length > 0) {
-          await db.finding.update({ where: { id: e.id }, data })
-        }
-      }
+      await Promise.all(
+        enrichments.map((e) => {
+          const data: Record<string, string> = {}
+          if (e.reproduction) data.reproduction = e.reproduction
+          if (e.description) data.description = e.description
+          if (Object.keys(data).length === 0) return undefined
+          return db.finding.update({ where: { id: e.id }, data })
+        })
+      )
     } catch { /* malformed JSON — skip */ }
   })
 }
