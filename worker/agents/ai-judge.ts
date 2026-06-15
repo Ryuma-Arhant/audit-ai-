@@ -3,10 +3,11 @@ import type { ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
 import type { InferredIntent } from './types'
+import logger from '../../lib/logger'
 
 export async function aiJudge(auditId: string, intents: InferredIntent[]): Promise<number | null> {
   return trackAgentRun(auditId, 'ai-judge', 3, { intents: intents.length }, async () => {
-    console.log('[ai-judge] Running in text-only mode (no screenshots)')
+    logger.info({ auditId }, 'ai-judge running in text-only mode')
 
     const pages = await db.page.findMany({ where: { auditId } })
     if (pages.length === 0) return null

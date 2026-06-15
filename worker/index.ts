@@ -1,6 +1,7 @@
 import { SQLiteQueue } from './queue'
 import { runPipeline } from './pipeline'
 import { db } from '../lib/db'
+import logger from '../lib/logger'
 
 const queue = new SQLiteQueue()
 const MAX_CONCURRENT_AUDITS = 3
@@ -13,12 +14,12 @@ let active = 0
       where: { status: 'running' },
       data: { status: 'failed', errorMessage: 'Worker restarted — audit did not complete', completedAt: new Date() },
     })
-    if (r.count > 0) console.log(`[worker] Reset ${r.count} stuck running audit(s) to failed`)
+    if (r.count > 0) logger.info({ count: r.count }, 'Reset stuck running audit(s) to failed')
   } catch (err) {
-    console.error('[worker] Failed to reset stuck audits:', err instanceof Error ? err.message : err)
+    logger.error({ err: err instanceof Error ? err.message : err }, 'Failed to reset stuck audits')
   }
 
-  console.log('[worker] Started — polling every 2s')
+  logger.info('Started — polling every 2s')
 
   setInterval(async () => {
     if (active >= MAX_CONCURRENT_AUDITS) return
@@ -27,16 +28,16 @@ let active = 0
     if (!auditId) return
 
     active++
-    console.log(`[worker] Picked up ${auditId} (active: ${active})`)
+    logger.info({ auditId, active }, 'Picked up audit')
 
     runPipeline(auditId)
       .catch(err => {
-        console.error(`[worker] ${auditId} failed:`, err.message)
+        logger.error({ auditId, err: err.message }, 'Audit failed')
         return queue.fail(auditId, err.message)
       })
       .finally(() => {
         active--
-        console.log(`[worker] ${auditId} done (active: ${active})`)
+        logger.info({ auditId, active }, 'Audit done')
       })
   }, 2000)
 })()

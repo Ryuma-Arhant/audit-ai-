@@ -16,6 +16,7 @@ import { aiJudge } from './agents/ai-judge'
 import { reportSynthesizer } from './agents/report-synthesizer'
 import { computeScores } from './scoring'
 import { clearAuditCostCache } from '../lib/claude'
+import logger from '../lib/logger'
 
 const MAX_CRAWL_RETRIES = 2
 const CHECK_NAMES = ['http-status', 'console-errors', 'broken-links', 'action-testing', 'stall-detection', 'persistence']
@@ -35,7 +36,7 @@ export async function runPipeline(auditId: string): Promise<void> {
       break
     } catch (err) {
       crawlError = err instanceof Error ? err : new Error(String(err))
-      console.error(`[pipeline] crawl attempt ${attempt}/${MAX_CRAWL_RETRIES} failed:`, crawlError.message)
+      logger.error({ auditId, attempt, maxRetries: MAX_CRAWL_RETRIES, err: crawlError.message }, 'crawl attempt failed')
     }
   }
 
@@ -58,7 +59,7 @@ export async function runPipeline(auditId: string): Promise<void> {
     checkPersistence(auditId),
   ])
   for (const [i, r] of checkResults.entries()) {
-    if (r.status === 'rejected') console.error(`[pipeline] check ${CHECK_NAMES[i]} failed:`, r.reason?.message ?? r.reason)
+    if (r.status === 'rejected') logger.error({ auditId, check: CHECK_NAMES[i], err: r.reason?.message ?? r.reason }, 'check failed')
   }
 
   // Phase A: ui-inferrer + error-classifier in parallel
@@ -74,7 +75,7 @@ export async function runPipeline(auditId: string): Promise<void> {
       const specs = await testGenerator(auditId, intents)
       await agenticExplorer(auditId, specs)
     } catch (err) {
-      console.error('[pipeline] Phase B failed:', err instanceof Error ? err.message : err)
+      logger.error({ auditId, err: err instanceof Error ? err.message : err }, 'Phase B failed')
     }
   }
 
@@ -89,7 +90,7 @@ export async function runPipeline(auditId: string): Promise<void> {
   try {
     await reportSynthesizer(auditId)
   } catch (err) {
-    console.error('[pipeline] report-synthesizer failed:', err instanceof Error ? err.message : err)
+    logger.error({ auditId, err: err instanceof Error ? err.message : err }, 'report-synthesizer failed')
   }
 
   // Final scoring + write result
