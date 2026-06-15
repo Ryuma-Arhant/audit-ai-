@@ -57,8 +57,8 @@ test('callClaude writes a TokenLog row with correct cost', async () => {
   expect(logs[0].inputTokens).toBe(100)
   expect(logs[0].outputTokens).toBe(50)
   expect(logs[0].agentName).toBe('test-agent')
-  // nemotron-550b: (100/1M * 8.0) + (50/1M * 8.0) = 0.0008 + 0.0004 = 0.0012
-  expect(logs[0].costUsd).toBeCloseTo(0.0012, 5)
+  // llama-3.1-8b-instruct (MODEL_FAST): (100/1M * 0.18) + (50/1M * 0.18) = 0.000018 + 0.000009 = 0.000027
+  expect(logs[0].costUsd).toBeCloseTo(0.000027, 5)
 })
 
 test('callClaude throws CostCapError when accumulated cost exceeds limit', async () => {

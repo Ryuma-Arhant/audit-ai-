@@ -30,13 +30,16 @@ export interface LLMResponse {
 // ─── Model constants ───
 
 export const MODEL_CAPABLE = 'nvidia/nemotron-3-ultra-550b-a55b'
-export const MODEL_FAST    = 'nvidia/nemotron-3-ultra-550b-a55b'
+export const MODEL_FAST    = 'meta/llama-3.1-8b-instruct'
 export const MODEL_VISION  = 'meta/llama-3.2-90b-vision-instruct'
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1'
 
-// Pricing estimate for nemotron-3-ultra-550b: $8/MTok in+out
+// Pricing for nemotron-3-ultra-550b (MODEL_CAPABLE): $8/MTok in+out
 const PRICE: { input: number; output: number } = { input: 8.0, output: 8.0 }
+
+// Pricing for llama-3.1-8b-instruct (MODEL_FAST): $0.18/MTok in+out
+const PRICE_FAST: { input: number; output: number } = { input: 0.18, output: 0.18 }
 
 // ─── callClaude ───
 
@@ -96,9 +99,10 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
 
   const inputTokens  = response.usage_metadata?.input_tokens  ?? 0
   const outputTokens = response.usage_metadata?.output_tokens ?? 0
+  const price = model === MODEL_FAST ? PRICE_FAST : PRICE
   const costUsd =
-    (inputTokens  / 1_000_000) * PRICE.input +
-    (outputTokens / 1_000_000) * PRICE.output
+    (inputTokens  / 1_000_000) * price.input +
+    (outputTokens / 1_000_000) * price.output
 
   await db.tokenLog.create({
     data: { auditId, agentName, model, inputTokens, outputTokens, costUsd },
