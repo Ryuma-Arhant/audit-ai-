@@ -1,2 +1,2 @@
 process.env.DATABASE_URL = 'file:./test.db'
-process.env.ANTHROPIC_API_KEY = 'test-key'
+process.env.NVIDIA_API_KEY = 'test-nvidia-key'
