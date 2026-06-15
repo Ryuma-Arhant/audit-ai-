@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { checkAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(req: Request) {
+  const authErr = checkAuth(req)
+  if (authErr) return authErr
+
   const audits = await db.audit.findMany({
     orderBy: { createdAt: 'desc' },
     take: 20,
@@ -51,6 +55,9 @@ export function validateCrawlTarget(url: string): string | null {
 }
 
 export async function POST(req: Request) {
+  const authErr = checkAuth(req)
+  if (authErr) return authErr
+
   let body: unknown
   try {
     body = await req.json()

@@ -101,6 +101,59 @@ describe('POST /api/audits', () => {
   })
 })
 
+describe('API key authentication', () => {
+  // lib/auth.ts reads PROMPTPROOF_API_KEY at module load time, so we must set
+  // the env var and re-import the route module in an isolated module registry.
+  const ORIGINAL_KEY = process.env.PROMPTPROOF_API_KEY
+
+  afterEach(() => {
+    if (ORIGINAL_KEY === undefined) {
+      delete process.env.PROMPTPROOF_API_KEY
+    } else {
+      process.env.PROMPTPROOF_API_KEY = ORIGINAL_KEY
+    }
+  })
+
+  async function loadRoute() {
+    let mod: typeof import('@/app/api/audits/route')
+    await jest.isolateModulesAsync(async () => {
+      mod = await import('@/app/api/audits/route')
+    })
+    return mod!
+  }
+
+  test('GET returns 401 when API key is set and no header provided', async () => {
+    process.env.PROMPTPROOF_API_KEY = 'test-key'
+    const { GET: GuardedGet } = await loadRoute()
+    const req = new Request('http://localhost/api/audits')
+    const res = await GuardedGet(req)
+    expect(res.status).toBe(401)
+  })
+
+  test('GET returns 200 when correct X-Api-Key header is provided', async () => {
+    process.env.PROMPTPROOF_API_KEY = 'test-key'
+    const { GET: GuardedGet } = await loadRoute()
+    const req = new Request('http://localhost/api/audits', {
+      headers: { 'X-Api-Key': 'test-key' },
+    })
+    const res = await GuardedGet(req)
+    expect(res.status).toBe(200)
+  })
+
+  test('POST returns 401 when API key is set and no header provided', async () => {
+    process.env.PROMPTPROOF_API_KEY = 'test-key'
+    const { POST: GuardedPost } = await loadRoute()
+    const req = new Request('http://localhost/api/audits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com' }),
+    })
+    const res = await GuardedPost(req)
+    expect(res.status).toBe(401)
+    expect(await db.audit.count()).toBe(0)
+  })
+})
+
 describe('GET /api/audits/[id]', () => {
   test('returns audit with findings array and pagesCrawled', async () => {
     const audit = await db.audit.create({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { checkAuth } from '@/lib/auth'
 
 const SEVERITY_RANK: Record<string, number> = {
   critical: 0,
@@ -9,9 +10,12 @@ const SEVERITY_RANK: Record<string, number> = {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authErr = checkAuth(req)
+  if (authErr) return authErr
+
   const { id } = await params
 
   const audit = await db.audit.findUnique({
