@@ -10,6 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "worker": "tsx watch worker/index.ts",
+    "worker:start": "tsx worker/index.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm run worker\""
   },
   "dependencies": {

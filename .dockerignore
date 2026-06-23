@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+data
+.env
+.env.local
+*.db
+coverage
+.playwright-mcp
+__tests__
+app
+components
+public
