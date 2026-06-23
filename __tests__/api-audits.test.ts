@@ -178,21 +178,13 @@ describe('API key authentication', () => {
     return mod!
   }
 
-  test('GET returns 401 when API key is set and no header provided', async () => {
+  test('GET returns 200 with no header even when API key is set', async () => {
+    // GET is unauthenticated by design — it's read-only report data, and the
+    // dashboard's own client-side fetches don't send the key. Only POST
+    // (which triggers a paid audit) is guarded.
     process.env.PROMPTPROOF_API_KEY = 'test-key'
-    const { GET: GuardedGet } = await loadRoute()
-    const req = new Request('http://localhost/api/audits')
-    const res = await GuardedGet(req)
-    expect(res.status).toBe(401)
-  })
-
-  test('GET returns 200 when correct X-Api-Key header is provided', async () => {
-    process.env.PROMPTPROOF_API_KEY = 'test-key'
-    const { GET: GuardedGet } = await loadRoute()
-    const req = new Request('http://localhost/api/audits', {
-      headers: { 'X-Api-Key': 'test-key' },
-    })
-    const res = await GuardedGet(req)
+    const { GET: UnguardedGet } = await loadRoute()
+    const res = await UnguardedGet()
     expect(res.status).toBe(200)
   })
 

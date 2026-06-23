@@ -4,10 +4,7 @@ import { db } from '@/lib/db'
 import { checkAuth } from '@/lib/auth'
 import { checkRateLimit } from '@/lib/ratelimit'
 
-export async function GET(req: Request) {
-  const authErr = checkAuth(req)
-  if (authErr) return authErr
-
+export async function GET() {
   const audits = await db.audit.findMany({
     orderBy: { createdAt: 'desc' },
     take: 20,
