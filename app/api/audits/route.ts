@@ -85,7 +85,9 @@ export async function POST(req: Request) {
     data: {
       url: parsed.data.url,
       status: 'queued',
-      config: JSON.stringify({ maxPages: 15, costLimitUsd: 0.50, timeLimitMs: 600_000 }),
+      // maxPages lowered from 15 — Render's free-tier worker (~512MB RAM)
+      // can OOM-crash on heavy real-world sites with deeper crawls.
+      config: JSON.stringify({ maxPages: 8, costLimitUsd: 0.50, timeLimitMs: 600_000 }),
     },
   })
 

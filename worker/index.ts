@@ -10,7 +10,9 @@ if (process.env.SENTRY_DSN) {
 }
 
 const queue = new SQLiteQueue()
-const MAX_CONCURRENT_AUDITS = 3
+// Lowered from 3 — Render's free-tier worker (~512MB RAM) can OOM-crash
+// running Playwright + concurrent LLM analysis on heavy real-world sites.
+const MAX_CONCURRENT_AUDITS = 1
 let active = 0
 
 // Reset audits stuck in 'running' from a previous worker crash, then start polling

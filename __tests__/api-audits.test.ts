@@ -29,7 +29,7 @@ describe('POST /api/audits', () => {
     expect(body.status).toBe('queued')
     const stored = await db.audit.findUnique({ where: { id: body.id } })
     expect(stored?.url).toBe('https://example.com')
-    expect(JSON.parse(stored?.config as string)).toMatchObject({ maxPages: 15, costLimitUsd: 0.50 })
+    expect(JSON.parse(stored?.config as string)).toMatchObject({ maxPages: 8, costLimitUsd: 0.50 })
   })
 
   test('returns 400 for invalid URL', async () => {
