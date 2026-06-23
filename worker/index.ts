@@ -3,6 +3,7 @@ import { SQLiteQueue } from './queue'
 import { runPipeline } from './pipeline'
 import { db } from '../lib/db'
 import logger from '../lib/logger'
+import { startArtifactsServer } from './artifacts-server'
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0 })
@@ -25,6 +26,10 @@ let active = 0
   }
 
   logger.info('Started — polling every 2s')
+
+  const PORT = Number(process.env.PORT) || 8080
+  startArtifactsServer(PORT)
+  logger.info({ port: PORT }, 'Artifacts/health server listening')
 
   setInterval(async () => {
     if (active >= MAX_CONCURRENT_AUDITS) return
