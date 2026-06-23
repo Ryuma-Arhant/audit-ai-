@@ -2,6 +2,7 @@ import http from 'http'
 import { AddressInfo } from 'net'
 import { testGenerator } from '../worker/agents/test-generator'
 import { agenticExplorer } from '../worker/agents/agentic-explorer'
+import { buildArtifactUrl } from '../worker/artifacts'
 import { db } from '../lib/db'
 import type { InferredIntent, AgentFlowSpec } from '../worker/agents/types'
 import type { LLMResponse } from '../lib/claude'
@@ -125,6 +126,7 @@ describe('agenticExplorer', () => {
       expect(results[0].success).toBe(true)
       expect(results[0].specName).toBe('test-click')
       expect(results[0].completedSteps).toBe(3)
+      expect(results[0].screenshotPath).toBe(buildArtifactUrl(audit.id, 'flow-0.png'))
 
       const run = await db.agentRun.findFirst({ where: { auditId: audit.id, agentName: 'agentic-explorer' } })
       expect(run?.status).toBe('complete')

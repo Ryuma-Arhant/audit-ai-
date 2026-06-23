@@ -3,12 +3,13 @@ import fs from 'fs/promises'
 import { chromium } from 'playwright'
 import { trackAgentRun } from './run-tracker'
 import type { AgentFlowSpec, FlowResult } from './types'
+import { getArtifactDir, buildArtifactUrl } from '../artifacts'
 
 export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): Promise<FlowResult[]> {
   return trackAgentRun(auditId, 'agentic-explorer', 2, { specsCount: specs.length }, async () => {
     if (specs.length === 0) return []
 
-    const artifactDir = path.join(process.cwd(), 'data', 'artifacts', auditId)
+    const artifactDir = getArtifactDir(auditId)
     await fs.mkdir(artifactDir, { recursive: true })
 
     const results: FlowResult[] = []
@@ -38,7 +39,7 @@ export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): 
           const idx = results.length
           const screenshotFile = path.join(artifactDir, `flow-${idx}.png`)
           await page.screenshot({ path: screenshotFile, fullPage: true })
-          screenshotPath = `/api/artifacts/${auditId}/flow-${idx}.png`
+          screenshotPath = buildArtifactUrl(auditId, `flow-${idx}.png`)
 
           results.push({
             specName: spec.name,
@@ -53,7 +54,7 @@ export async function agenticExplorer(auditId: string, specs: AgentFlowSpec[]): 
           try {
             const screenshotFile = path.join(artifactDir, `flow-${idx}-fail.png`)
             await page.screenshot({ path: screenshotFile, fullPage: true })
-            screenshotPath = `/api/artifacts/${auditId}/flow-${idx}-fail.png`
+            screenshotPath = buildArtifactUrl(auditId, `flow-${idx}-fail.png`)
           } catch { /* ignore */ }
           results.push({
             specName: spec.name,
