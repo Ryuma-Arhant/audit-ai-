@@ -4,6 +4,7 @@ import { callClaude, MODEL_CAPABLE, MODEL_VISION } from '../../lib/claude'
 import type { MessageParam, ContentBlock } from '../../lib/claude'
 import { db } from '../../lib/db'
 import { trackAgentRun } from './run-tracker'
+import { getArtifactDir } from '../artifacts'
 import type { InferredIntent } from './types'
 
 export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
@@ -18,10 +19,11 @@ export async function uiInferrer(auditId: string): Promise<InferredIntent[]> {
       pagesToProcess.map(async (p) => {
         if (!p.screenshotPath) return null
         try {
-          // screenshotPath is the API URL (/api/artifacts/{auditId}/{n}.png);
-          // map it back to the on-disk location under data/artifacts/.
-          const diskRel = p.screenshotPath.replace(/^\/api\/artifacts\//, '')
-          const buf = await fs.readFile(path.join(process.cwd(), 'data', 'artifacts', diskRel))
+          // screenshotPath is now an absolute URL (e.g. https://.../artifacts/{auditId}/{n}.png)
+          // served by the worker's own artifacts-server; map it back to the
+          // on-disk location directly since this runs in the same process.
+          const filename = path.basename(p.screenshotPath)
+          const buf = await fs.readFile(path.join(getArtifactDir(auditId), filename))
           return buf.toString('base64')
         } catch {
           return null // no screenshot in test env — proceed text-only
