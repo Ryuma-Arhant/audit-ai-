@@ -9,7 +9,7 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   // SQLite can't handle concurrent writers — run test files sequentially
   maxWorkers: 1,
 }

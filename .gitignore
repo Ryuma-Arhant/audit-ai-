@@ -49,3 +49,4 @@ public/artifacts/
 !/data/artifacts/
 /data/artifacts/*
 !/data/artifacts/.gitkeep
+.playwright-mcp/
