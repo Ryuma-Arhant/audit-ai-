@@ -24,7 +24,7 @@ export class SQLiteQueue implements IQueue {
           data: { status: 'running', startedAt: new Date() },
         })
         return audit.id
-      })
+      }, { maxWait: 10000, timeout: 10000 })
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

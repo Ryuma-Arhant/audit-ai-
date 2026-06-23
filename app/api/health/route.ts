@@ -6,7 +6,7 @@ export async function GET() {
   try {
     await Promise.race([
       db.$queryRaw`SELECT 1`,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
     ])
   } catch {
     dbStatus = 'error'
