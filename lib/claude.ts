@@ -84,7 +84,7 @@ export async function callClaude(params: CallClaudeParams): Promise<LLMResponse>
     apiKey: process.env.NVIDIA_API_KEY ?? '',
     configuration: { baseURL: NVIDIA_BASE_URL },
     maxTokens,
-    temperature: 0.2,
+    temperature: 0,
     timeout: 120_000,
   })
 

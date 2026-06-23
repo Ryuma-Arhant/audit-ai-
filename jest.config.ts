@@ -9,7 +9,7 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   // Tests share one Postgres DB and reset tables in beforeEach — run test files sequentially
   maxWorkers: 1,
   // Remote free-tier Postgres adds real network latency per query; the 5s

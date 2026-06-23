@@ -15,7 +15,7 @@ interface PhaseRow {
   durationMs: number | null
 }
 
-function derivePhaseState(runs: AgentRun[]): PhaseState {
+export function derivePhaseState(runs: AgentRun[]): PhaseState {
   if (runs.length === 0) return 'waiting'
   if (runs.some(r => r.status === 'running')) return 'running'
   const allComplete = runs.every(r => r.status === 'complete')
@@ -27,7 +27,7 @@ function derivePhaseState(runs: AgentRun[]): PhaseState {
   return 'waiting'
 }
 
-function totalDuration(runs: AgentRun[]): number | null {
+export function totalDuration(runs: AgentRun[]): number | null {
   if (runs.length === 0) return null
   const valid = runs.map(r => r.durationMs ?? 0)
   if (valid.length === 0) return null
@@ -58,7 +58,7 @@ const LABEL_COLOR: Record<PhaseState, string> = {
   failed:   'text-red-600',
 }
 
-function fmt(ms: number | null): string {
+export function fmt(ms: number | null): string {
   if (ms === null) return ''
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
